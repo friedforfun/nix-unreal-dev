@@ -27,129 +27,128 @@
         Please edit unreal-versions.nix and set:
           - enginePath = "/path/to/engine/${versionConfig.version}"
       ''
-    else if !builtins.pathExists versionConfig.enginePath
-    then throw "enginePath does not exist: ${versionConfig.enginePath}"
     else versionConfig.enginePath;
 
-  # Find clang++ binary
-  sdkPath = "${enginePath}/Engine/Extras/ThirdPartyNotUE/SDKs/HostLinux/Linux_x64";
+  clangRelativePath =
+    if versionConfig.clangRelativePath == null
+    then
+      throw ''
+        Unreal Enging ${versionConfig.version} is not configured.
 
-  findClangpp = let
-    sdkDirs = builtins.readDir sdkPath;
+        Please edit unreal-versions.nix and set:
+          - clangRelativePath = "/path/to/clang++"
+      ''
+    else versionConfig.clangRelativePath;
 
-    versionDirs = builtins.filter (name: sdkDirs.${name} == "directory") (builtins.attrNames sdkDirs);
-
-    selectedDir =
-      if builtins.length versionDirs > 0
-      then builtins.head versionDirs
-      else throw "No clang version directories found in ${sdkPath}";
-  in "${sdkPath}/${selectedDir}/x86_64-unknown-linux-gnu/clang++";
-
-  clangppPath = findClangpp;
-
-  checkClangpp =
-    if !builtins.pathExists clangppPath
-    then throw "clang++ not found at ${clangppPath}"
-    else null;
+  clangppPath = "${enginePath}/${clangRelativePath}";
 
   dotnetPkg = with pkgs.dotnetCorePackages;
     combinePackages [
       sdk_9_0
     ];
 
-  fhsEnv = pkgs.buildFHSEnv {
-    name = "UnrealEditor";
+  unrealPkgs = with pkgs;
+    [
+      # LLVM toolchain
+      clang_18
+      clang-tools
+      gdb
+      python3
 
-    targetPkgs = pkgs:
-      with pkgs;
-        [
-          # LLVM toolchain
-          clang_18
-          clang-tools
-          gdb
-          python3
+      # Dotnet
+      dotnet-sdk
+      mono
 
-          # Dotnet
-          dotnet-sdk
-          mono
+      # Base libraries
+      udev
+      zlib
+      openssl
+      icu
 
-          # Base libraries
-          udev
-          zlib
-          openssl
-          icu
+      # SDL2 and multimedia
+      SDL2
+      SDL2.dev
+      SDL2_image
+      SDL2_ttf
+      SDL2_mixer
 
-          # SDL2 and multimedia
-          SDL2
-          SDL2.dev
-          SDL2_image
-          SDL2_ttf
-          SDL2_mixer
+      # Graphics
+      vulkan-loader
+      vulkan-tools
+      vulkan-validation-layers
+      libGL
+      libdrm
+      mesa
 
-          # Graphics
-          vulkan-loader
-          vulkan-tools
-          vulkan-validation-layers
-          libGL
-          libdrm
-          mesa
+      # Audio/Graphics support
+      alsa-lib
+      libpulseaudio
+      libgbm
+      libxkbcommon
+      expat
+      wayland
 
-          # Audio/Graphics support
-          alsa-lib
-          libpulseaudio
-          libgbm
-          libxkbcommon
-          expat
-          wayland
+      # GUI/Windowing
+      glib
+      dbus
+      pango
+      cairo
+      atk
+      gtk3
+      nss
+      nspr
 
-          # GUI/Windowing
-          glib
-          dbus
-          pango
-          cairo
-          atk
-          gtk3
-          nss
-          nspr
+      # FAB plugin - zenity
+      zenity
+    ]
+    ++ (with pkgs.xorg; [
+      libICE
+      libSM
+      libX11
+      libxcb
+      libXcomposite
+      libXcursor
+      libXdamage
+      libXext
+      libXfixes
+      libXi
+      libXrandr
+      libXrender
+      libXScrnSaver
+      libxshmfence
+      libXtst
+    ]);
 
-          # FAB plugin - zenity
-          zenity
-        ]
-        ++ (with pkgs.xorg; [
-          libICE
-          libSM
-          libX11
-          libxcb
-          libXcomposite
-          libXcursor
-          libXdamage
-          libXext
-          libXfixes
-          libXi
-          libXrandr
-          libXrender
-          libXScrnSaver
-          libxshmfence
-          libXtst
-        ]);
+  shellHookContent = ''
+     # Clangd configuration
+    export CLANGD_QUERY_DRIVER="${clangppPath}"
 
-    profile = ''
-       # Clangd configuration
-      export CLANGD_QUERY_DRIVER="${clangppPath}"
+     # Dotnet configuration
+     export DOTNET_ROOT="${dotnetPkg}"
+     export DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
+     export DOTNET_NUGET_DISABLE_ADVISORY_AUDITABILITY=true
 
-       # Dotnet configuration
-       export DOTNET_ROOT="${dotnetPkg}"
-       export DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
-       export DOTNET_NUGET_DISABLE_ADVISORY_AUDITABILITY=true
+     # Graphics support
+     export LIBGL_DRIVERS_PATH="${pkgs.lib.getLib pkgs.mesa}/lib/dri"
+     export EGL_DRIVERS_PATH="${pkgs.lib.getLib pkgs.mesa}/lib/egl"
+     export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath [pkgs.libdrm pkgs.mesa pkgs.libgbm]}:$LD_LIBRARY_PATH"
 
-       # Graphics support
-       export LIBGL_DRIVERS_PATH="${pkgs.lib.getLib pkgs.mesa}/lib/dri"
-       export EGL_DRIVERS_PATH="${pkgs.lib.getLib pkgs.mesa}/lib/egl"
-       export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath [pkgs.libdrm pkgs.mesa pkgs.libgbm]}:$LD_LIBRARY_PATH"
-
-       # GDB Python pretty-printers
-       export PYTHONPATH="${pkgs.gcc}/share/gcc-${pkgs.gcc.version}/python:$PYTHONPATH"
-    '';
+     # GDB Python pretty-printers
+     export PYTHONPATH="${pkgs.gcc}/share/gcc-${pkgs.gcc.version}/python:$PYTHONPATH"
+  '';
+  
+  shellEnv = pkgs.mkShell {
+    name = "UnrealEditor-${version}";
+    buildInputs = unrealPkgs;
+    shellHook = shellHookContent;
   };
+
+  fhsEnv = pkgs.buildFHSEnv {
+    name = "UnrealEditor-${version}";
+    targetPkgs = pkgs: unrealPkgs;
+    runScript = "bash";
+    profile = shellHookContent;
+  };
+
 in
-  fhsEnv.env
+  shellEnv
