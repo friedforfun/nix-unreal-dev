@@ -4,3 +4,6 @@ result-*
 
 # Ignore automatically generated direnv output
 .direnv
+
+# Ignore further changes to unreal-versions.nix
+unreal-versions.nix
