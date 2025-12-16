@@ -120,21 +120,26 @@
     ]);
 
   shellHookContent = ''
-     # Clangd configuration
+    # Unreal engine path
+    export UNREAL_ENGINE_PATH="${enginePath}"
+
+    # Clangd configuration
     export CLANGD_QUERY_DRIVER="${clangppPath}"
 
-     # Dotnet configuration
-     export DOTNET_ROOT="${dotnetPkg}"
-     export DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
-     export DOTNET_NUGET_DISABLE_ADVISORY_AUDITABILITY=true
+    # Dotnet configuration
+    export DOTNET_ROOT="${dotnetPkg}"
+    export DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
+    export DOTNET_NUGET_DISABLE_ADVISORY_AUDITABILITY=true
 
-     # Graphics support
-     export LIBGL_DRIVERS_PATH="${pkgs.lib.getLib pkgs.mesa}/lib/dri"
-     export EGL_DRIVERS_PATH="${pkgs.lib.getLib pkgs.mesa}/lib/egl"
-     export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath [pkgs.libdrm pkgs.mesa pkgs.libgbm]}:$LD_LIBRARY_PATH"
+    # Graphics support
+    export LIBGL_DRIVERS_PATH="${pkgs.lib.getLib pkgs.mesa}/lib/dri"
+    export EGL_DRIVERS_PATH="${pkgs.lib.getLib pkgs.mesa}/lib/egl"
+    export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath [pkgs.libdrm pkgs.mesa pkgs.libgbm]}:$LD_LIBRARY_PATH"
 
-     # GDB Python pretty-printers
-     export PYTHONPATH="${pkgs.gcc}/share/gcc-${pkgs.gcc.version}/python:$PYTHONPATH"
+    # GDB Python pretty-printers
+    export PYTHONPATH="${pkgs.gcc}/share/gcc-${pkgs.gcc.version}/python:$PYTHONPATH"
+
+    echo "Exported [UNREAL_ENGINE_PATH, CLANGD_QUERY_DRIVER, DOTNET_ROOT, DOTNET_SYSTEM_GLOBALIZTION_INVARIANT, DOTNOTE_NUGET_DISABLE_ADVISTORY_AUDITABILITY, LIBGL_DRIVERS_PATH, EGL_DRIVERS_PATH, LD_LIBRARY_PATH, PYTHON_PATH]"
   '';
   
   shellEnv = pkgs.mkShell {
@@ -146,9 +151,9 @@
   fhsEnv = pkgs.buildFHSEnv {
     name = "UnrealEditor-${version}";
     targetPkgs = pkgs: unrealPkgs;
-    runScript = "bash";
+    runScript = "fish";
     profile = shellHookContent;
   };
 
 in
-  shellEnv
+  fhsEnv.env
