@@ -1,4 +1,4 @@
-# Version can be specified as parameter, example: $ nix-shell unreal.nix --arg version '"5_5"'
+# Version can be specified as parameter, example: $ nix-shell unreal.nix --arg paramVersion '"5_5"'
 {
   pkgs ? import <nixpkgs> {},
   paramVersion ? null,
@@ -52,6 +52,7 @@
       # LLVM toolchain
       clang_18
       clang-tools
+      lldb
       gdb
       python3
 
