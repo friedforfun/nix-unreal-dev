@@ -39,6 +39,19 @@ A Nix flake for setting up Unreal Engine development environments. This project 
 
    This will download and set up all dependencies automatically. You're now ready to develop!
 
+### NeoVim
+
+A sample nvim.lua is provided that configures various build commands. It is primarily for illustrative purposes, use at your own risk.
+
+If exrc is enabled copy/paste nvim.lua as .nvim.lua into your project root.
+
+It provides the following commands:
+
+`:GenerateProjectFiles` - Generates a MakeFile, and a compile_commands.json file, and deposits into your project root.
+`:MakeProjectNameEditor-Config` - Compiles the project for the specified configuration (replacing Config with `Debug`, `DebugGame`, `Development`, `Shipping`)
+
+Also hooks up lldb with a runner to launch or attach the debug adapter. 
+
 ## Usage
 
 ### Entering a Development Shell

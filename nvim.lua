@@ -15,6 +15,15 @@ end
 local dap = require("dap")
 
 -- Configure the GDB adapter (only if not already configured globally)
+if not dap.adapter.lldb then
+  dap.adapters.lldb = {
+    type = "executable",
+    command = "lldb-dap",
+    name = "lldb",
+  }
+end
+
+-- Configure the GDB adapter (only if not already configured globally)
 if not dap.adapters.gdb then
 	dap.adapters.gdb = {
 		id = "gdb",
@@ -111,16 +120,16 @@ for idx, target in ipairs(targets) do
 		dap.configurations.cpp,
 		setmetatable({
 			name = target,
-			type = "gdb",
+			type = "lldb",
 			request = "launch",
 			program = engine_root .. "/Engine/Binaries/Linux/" .. binaries[idx],
 			args = {
 				"-project=" .. project_info.path,
 			},
 			cwd = vim.fn.getcwd(),
-			initCommands = function()
-				return { "handle SIGPIPE nostop noprint pass" }
-			end,
+      stopCommands = {
+        "process handle SIGSEGV --pass true --stop true --notify true",
+      },
 			_target = target,
 		}, {
 			__call = function(config)
@@ -134,9 +143,6 @@ for idx, target in ipairs(targets) do
 				end
 
 				vim.notify("✓ Build successful! Launching debugger...", vim.log.levels.INFO)
-
-				vim.notify("Launching: " .. config.program, vim.log.levels.INFO)
-				vim.notify("Args: " .. vim.inspect(config.args), vim.log.levels.INFO)
 				return config
 			end,
 		})
@@ -145,7 +151,7 @@ end
 
 table.insert(dap.configurations.cpp, {
 	name = "Attach to UnrealEditor",
-	type = "gdb",
+	type = "lldb",
 
 	request = "attach",
 	pid = require("dap.utils").pick_process,
